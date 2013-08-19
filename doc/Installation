@@ -1,0 +1,152 @@
+--------------------
+Basical installation
+--------------------
+
+1. Installation of following packages are strongly recommended before
+   installing bash:
+
+	* EMX runtime DLLs (required)
+        * GNU grep (GNUREGEX.DLL required by bin/expr.exe)
+	* GNU file utilites
+	* GNU text utilites
+	* GNU sed
+        * GNU ... (on your behalf)
+
+   You can get them for example from ftp.leo.org/pub/comp/os/os2/unix/.../
+   as well as from hobbes.nmsu.edu/pub/os2/unix/.../
+
+   These utilites are heavily used by most Unix scripts, and beside this,
+   they`re really useful :-)
+
+2. Create your home directory (if not already). Most ported Unix programs
+   keeps there their configuration files. Copy there the files under home/
+   subdirectory of this archive.
+
+3. Create a etc/ subdirectory (if not already). This can be /emx/etc, or
+   even /tcpip/etc. Copy there the termcap.dat file from the /etc/ directory
+   of this archive.
+
+4. Add these (or similar) lines to CONFIG.SYS:
+
+   set TERM=os2
+   set TERMCAP=d:/emx/etc/termcap.dat
+
+ | Note that TERM should be OS2 if you want most gray keys to work (see .inputrc).
+ | Because of same fact you should use provided termcap file, although you can
+ | as well copy the OS2 terminal description into your termcap (or even merge
+ | it with the description of your favorite terminal).
+ |
+ | If you find any incompatibilities between OS2 terminal description and other
+ | programs that uses TERMCAP please let me know.
+
+   set HOME=d:/home/andy
+   set USER=andy
+
+ | HOME should point to your home directory. USER is not really needed, but
+ | can be helpful sometimes.
+
+   set LS_COLORS="no=00;36:fi=00;36:di=01;37:ln=01;36:pi=40;33:so=01;35:bd=40;33;01:cd=40;33;01:ex=01;32:*.cmd=01;32:*.exe=01;32:*.com=01;32:*.btm=01;32:*.bat=01;32:*.tar=00\:37:*.tgz=00;37:*.arj=00;37:*.taz=00;37:*.lzh=00;37:*.zip=00;37:*.z=00;37:*.Z=00;37:*.gz=00;37:*.deb=00;37:*.rar=00;37:*.jpg=01;36:*.gif=01;36:*.bmp=01;36:*.ppm=01;36:*.tga=01;36:*.xbm=01;36:*.xpm=01;36:*.tif=01;36:*.mpg=01;33:*.avi=01;33:*.gl=01;33:*.dl=01;33:*.mid=00;36:*.mtm=00;36:*.s3m=00;36:*.stm=00;36:*.mod=00;36:*.xm=00;36:*.inf=00;33:*.tex=00;33:*.doc=00;33:*.txt=00;33:*.texi=00;33:*.INI=00;31:*.ini=00;31:*.cfg=00;31:"
+
+ | LS_COLORS defines the colors for displaying files (depending on extension).
+ | You can setup it as you like.
+
+   set CC=gcc
+   set CXX=gcc
+   set LDFLAGS=-s -Zexe -Zcrtdll
+
+ | CC, CXX and LDFLAGS are used by `configure' scripts, and many
+ | makefiles. Set also CFLAGS and/or CXXFLAGS, if you want.
+
+   set SHELL=d:/usr/bin/bash.exe
+   set CONFIG_SHELL=d:/usr/bin/bash.exe
+
+ | Set also MAKE_SHELL if you want to use bash with GNU Make 3.75.
+ | CONFIG_SHELL is used by GNU configure scripts. You`ll find this useful if
+ | you will run them, since otherwise they run /bin/sh which most likely is
+ | missing in your system :-)
+
+   set BASH_STARTUP=~/.bashos2
+
+ | BASH_STARTUP is run *always* by BASH/2. This is needed since .bashos2
+ | contains some definitions which rises its compatibility with Unix
+ | scripts, and they are needed even when bash is run in non-interactive
+ | or even /bin/sh mode.
+
+   set YACC=bison -y
+   set AWK=awk
+   set LEX=flex
+
+ | Set these if you have yacc/bison, awk and/or lex/flex.
+
+   set EDITOR=d:/usr/app/epm/epm.exe
+
+ | EDITOR should point to your favorite editor (no matter whenever its PM or
+ | windowed or fullscreen). Its used for `fc' command.
+
+   set BASHLOAD=#
+
+ | You can set this variable to instruct emxload.exe to keep a resident
+ | copy of bash for # minutes after last load of bash. This can speedup
+ | the execution of makefiles if you`re using bash as the command
+ | interpreter for make.
+
+5. Copy the contents of /bin/ directory from this archive somewhere on your
+   PATH. This can be /emx/bin directory, for example, or even /bin (if you
+   want it to be really like Unix :-)
+
+6. Put the INF books from this directory in a directory on BOOKSHELF path,
+   for example /emx/book. `bashref.INF' is the bash manual, `rlman.INF' is
+   GNU readline manual (it contains useful info about functions that you
+   can bind to keys) and sh-utils.INF is the GNU shell utilites manual
+   (sidenote: I`ve ported only those utilites that went straightforward, for
+   example I didn`t ported id, true/false, who, groups, nice, nohup, su).
+   Create program objects from them, if you want.
+
+7. Reboot.
+
+------------------------------------------------
+Additional steps to rise compatibility with Unix
+------------------------------------------------
+
+The steps described before are usualy enough to run without changes most
+`well-behaved' Unix scripts. However, you can make some additional steps
+to make running scripts even easier:
+
+1. Replace emx`s ld.exe and emxomfld.exe with those in the src/emx-add/bin
+   directory. Copy the nullstub.exe file into /emx/bin. I`ve changed only
+   a couple of things in them, you can look in src/emx-add/*.diff files for
+   more information. What they do now: with the -Zexe option they do not
+   just create a zero-length file with no extension, but copies nullstub.exe
+   file into the new file. NULLSTUB is a program that runs in turn a program
+   with same name but with .exe extension, thus avoiding TWO conflicts running
+   scripts like:
+
+   #
+   # If we cannot run a trivial program, we must be cross compiling.
+   #
+   ac_link='${CC-cc} -o conftest $CFLAGS $CPPFLAGS $LDFLAGS conftest.c $LIBS'
+   echo -n "checking whether cross-compiling..."
+   cat > conftest.c <<EOF
+   main(){return(0);}
+   EOF
+   eval $ac_link
+   if test -s conftest && (./conftest; exit) 2>/dev/null; then
+     ac_cv_c_cross=no
+   else
+     ac_cv_c_cross=yes
+   fi
+   rm -fr conftest*
+
+   here "test -s" test the result of compilation -- the file "conftest" --
+   to exist and to have size greater than zero (and gcc -Zexe *fails* this
+   test), then runs ./conftest -- and here *fails* again since ./conftest is
+   a zero-length file.
+
+2. Create a completely Unix-like filesystem using TVFS (Toronto Virtual
+   File System - a free Installable File System for OS/2 from an IBM employee).
+   The most important (often used in scripts) directories are /bin, /usr/bin,
+   /etc, /tmp. On TVFS drives you can even create links (although not with the
+   usual Unix interface through `ln', but this can be resolved). Populate the
+   /bin and /usr/bin directory with Unix utilites. Place sh.exe and bash.exe
+   into /bin, since /bin/sh is the most frequently used absolute directory
+   reference.

@@ -1,0 +1,1485 @@
+diff -rcwB bash-orig/bashline.c bash-2.0/bashline.c
+*** bash-orig/bashline.c	Wed Nov 20 19:37:18 1996
+--- bash-2.0/bashline.c	Mon Aug 18 00:39:14 1997
+***************
+*** 126,133 ****
+--- 126,138 ----
+     host list. */
+  int perform_hostname_completion = 1;
+  
++ #if !defined (__EMX__)
+  static char *bash_completer_word_break_characters = " \t\n\"'@><=;|&(:";
+  static char *bash_nohostname_word_break_characters = " \t\n\"'><=;|&(:";
++ #else
++ static char *bash_completer_word_break_characters = " \t\n\"'@><=;|&(";
++ static char *bash_nohostname_word_break_characters = " \t\n\"'><=;|&(";
++ #endif /* !__EMX__ */
+  
+  static Function *old_rl_startup_hook = (Function *) NULL;
+  
+diff -rcwB bash-orig/builtins/evalfile.c bash-2.0/builtins/evalfile.c
+*** bash-orig/builtins/evalfile.c	Thu Aug 15 19:30:10 1996
+--- bash-2.0/builtins/evalfile.c	Sat Aug 16 15:08:00 1997
+***************
+*** 115,121 ****
+--- 115,125 ----
+    close (fd);
+    errno = return_val;
+  
++ #if !defined (__EMX__)
+    if (result != (int)finfo.st_size)
++ #else
++   if (result <= 0)
++ #endif /* !__EMX__ */
+      {
+        free (string);
+        goto file_error_and_exit;
+diff -rcwB bash-orig/builtins/evalstring.c bash-2.0/builtins/evalstring.c
+*** bash-orig/builtins/evalstring.c	Thu Aug 15 23:44:46 1996
+--- bash-2.0/builtins/evalstring.c	Tue Jul 15 21:01:46 1997
+***************
+*** 22,27 ****
+--- 22,31 ----
+  #  include <unistd.h>
+  #endif
+  
++ #ifdef __EMX__
++ #include <sys/types.h>
++ #endif
++ 
+  #include <stdio.h>
+  #include <signal.h>
+  
+diff -rcwB bash-orig/builtins/fc.def bash-2.0/builtins/fc.def
+*** bash-orig/builtins/fc.def	Thu Nov  7 19:10:18 1996
+--- bash-2.0/builtins/fc.def	Fri Sep 12 21:36:20 1997
+***************
+*** 153,159 ****
+--- 153,163 ----
+    REPL *rlist, *rl;
+    char *ename, *command, *newcom, *line;
+    HIST_ENTRY **hlist;
++ #if !defined (__EMX__)
+    char fn[64];
++ #else
++   char fn[MAXNAMLEN + 1];
++ #endif /* __EMX__ */
+  
+    numbering = 1;
+    reverse = listing = execute = 0;
+***************
+*** 317,325 ****
+    else
+      {
+        numbering = 0;
+-       sprintf (fn, "/tmp/bash%d", (int)time ((time_t *) 0) + (int)getpid ());
+  
+        stream = fopen (fn, "w");
+  
+        if (stream == 0)
+  	{
+--- 321,336 ----
+    else
+      {
+        numbering = 0;
+  
++ #if !defined (__EMX__)
++       sprintf (fn, "/tmp/bash%d", (int)time ((time_t *) 0) + (int)getpid ());
+        stream = fopen (fn, "w");
++ #else
++       {
++        int fd = emx_tempopen((char *)&fn, O_NODELETETEMP | O_TRUNC | O_WRONLY | O_CREAT, 0666);
++        stream = fdopen (fd, "w");
++       }
++ #endif
+  
+        if (stream == 0)
+  	{
+diff -rcwB bash-orig/builtins/Makefile.in bash-2.0/builtins/Makefile.in
+*** bash-orig/builtins/Makefile.in	Fri Oct  4 17:24:22 1996
+--- bash-2.0/builtins/Makefile.in	Sun Oct 26 21:33:22 1997
+***************
+*** 20,26 ****
+  
+  DEFS = @DEFS@
+  
+! INCLUDES = -I. -I.. -I$(topdir) -I$(topdir)/lib -I$(srcdir)
+  
+  CCFLAGS = $(DEFS) $(SYSTEM_FLAGS) $(CPPFLAGS) ${INCLUDES} $(LOCAL_CFLAGS) $(CFLAGS)
+  
+--- 20,26 ----
+  
+  DEFS = @DEFS@
+  
+! INCLUDES = -I. -I.. -I$(topdir) -I$(topdir)/lib -I$(srcdir) -I../support/@host@
+  
+  CCFLAGS = $(DEFS) $(SYSTEM_FLAGS) $(CPPFLAGS) ${INCLUDES} $(LOCAL_CFLAGS) $(CFLAGS)
+  
+***************
+*** 89,95 ****
+  	-noproduction $(DIRECTDEFINE) $(DEFSRC)
+  
+  mkbuiltins: $(srcdir)/mkbuiltins.c ../config.h
+! 	$(CC) $(CCFLAGS) -o $(MKBUILTINS) $(srcdir)/mkbuiltins.c $(LIBS)
+  
+  # rules for deficient makes, like SunOS
+  common.o: common.c
+--- 89,95 ----
+  	-noproduction $(DIRECTDEFINE) $(DEFSRC)
+  
+  mkbuiltins: $(srcdir)/mkbuiltins.c ../config.h
+! 	$(CC) $(CCFLAGS) $(LDFLAGS) -o $(MKBUILTINS) $(srcdir)/mkbuiltins.c $(LIBS)
+  
+  # rules for deficient makes, like SunOS
+  common.o: common.c
+***************
+*** 102,108 ****
+  	$(SHELL) $(srcdir)/psize.sh > pipesize.h
+  
+  psize.aux:	psize.c
+! 	$(CC) $(CCFLAGS) -o $@ $(srcdir)/psize.c
+  
+  documentation: builtins.texi
+  
+--- 102,108 ----
+  	$(SHELL) $(srcdir)/psize.sh > pipesize.h
+  
+  psize.aux:	psize.c
+! 	$(CC) $(CCFLAGS) $(LDFLAGS) -o $@ $(srcdir)/psize.c
+  
+  documentation: builtins.texi
+  
+diff -rcwB bash-orig/builtins/mkbuiltins.c bash-2.0/builtins/mkbuiltins.c
+*** bash-orig/builtins/mkbuiltins.c	Tue Sep 24 21:42:32 1996
+--- bash-2.0/builtins/mkbuiltins.c	Sat Aug 16 15:07:12 1997
+***************
+*** 269,276 ****
+--- 269,281 ----
+  	{
+  	  write_longdocs (structfile, saved_builtins);
+  	  fclose (structfile);
++ #ifndef __EMX__
+  	  link (temp_struct_filename, struct_filename);
+  	  unlink (temp_struct_filename);
++ #else
++ 	  remove (struct_filename);
++ 	  rename (temp_struct_filename, struct_filename);
++ #endif
+  	}
+  
+        if (externfile)
+***************
+*** 456,462 ****
+--- 461,471 ----
+  
+    buffer = xmalloc (1 + (int)finfo.st_size);
+  
++ #if !defined (__EMX__)
+    if (read (fd, buffer, finfo.st_size) != finfo.st_size)
++ #else
++   if ((finfo.st_size = read (fd, buffer, finfo.st_size)) <= 0)
++ #endif /* !__EMX__ */
+      file_error (filename);
+  
+    close (fd);
+diff -rcwB bash-orig/config.h.bot bash-2.0/config.h.bot
+*** bash-orig/config.h.bot	Fri Oct  4 19:31:28 1996
+--- bash-2.0/config.h.bot	Sun Oct 26 17:42:08 1997
+***************
+*** 1,6 ****
+--- 1,10 ----
+  /* config.h.bot */
+  /* modify settings or make new ones based on what autoconf tells us. */
+  
++ #if defined (__EMX__)
++ #  include "support/i386-ibm-os2/config-os2.h"
++ #endif
++ 
+  #if !defined (HAVE_VPRINTF) && defined (HAVE_DOPRNT)
+  #  define USE_VFPRINTF_EMULATION
+  #  define HAVE_VPRINTF
+diff -rcwB bash-orig/configure bash-2.0/configure
+*** bash-orig/configure	Wed Dec 18 23:01:40 1996
+--- bash-2.0/configure	Sun Oct 26 21:23:02 1997
+***************
+*** 699,704 ****
+--- 699,706 ----
+  *-dgux*)	opt_gnu_malloc=no ;;	# DG/UX machines
+  *-qnx)		opt_gnu_malloc=no ;;	# QNX 4.2
+  *-bsdi2.1)	opt_gnu_malloc=no ; : ${CC:=shlicc2} ;; # for loadable builtins
++ *-os2)		opt_gnu_malloc=no	# OS/2 + EMX runtime
++ 		export LDFLAGS="-s -Zexe -Zcrtdll -Zbsd-signals" ;;
+  esac
+  
+  # Check whether --with-gnu-malloc or --without-gnu-malloc was given.
+diff -rcwB bash-orig/configure.in bash-2.0/configure.in
+*** bash-orig/configure.in	Tue Dec 17 20:49:08 1996
+--- bash-2.0/configure.in	Sun Oct 26 21:23:12 1997
+***************
+*** 41,46 ****
+--- 41,48 ----
+  *-dgux*)	opt_gnu_malloc=no ;;	# DG/UX machines
+  *-qnx)		opt_gnu_malloc=no ;;	# QNX 4.2
+  *-bsdi2.1)	opt_gnu_malloc=no ; : ${CC:=shlicc2} ;; # for loadable builtins
++ *-os2)		opt_gnu_malloc=no	# OS/2 + EMX runtime
++ 		export LDFLAGS="-s -Zexe -Zcrtdll -Zbsd-signals" ;;
+  esac
+  
+  dnl arguments to configure
+diff -rcwB bash-orig/CWRU/misc/sigstat.c bash-2.0/CWRU/misc/sigstat.c
+*** bash-orig/CWRU/misc/sigstat.c	Tue Feb 25 22:52:08 1992
+--- bash-2.0/CWRU/misc/sigstat.c	Sat Aug 16 12:33:18 1997
+***************
+*** 74,79 ****
+--- 74,82 ----
+  #if defined (SIGINT)		/* interrupt */
+    	signames[SIGINT] = "SIGINT";
+  #endif
++ #if defined (SIGBREAK)		/* Ctrl+Break */
++   	signames[SIGBREAK] = "SIGBREAK";
++ #endif
+  #if defined (SIGQUIT)		/* quit */
+    	signames[SIGQUIT] = "SIGQUIT";
+  #endif
+diff -rcwB bash-orig/eval.c bash-2.0/eval.c
+*** bash-orig/eval.c	Thu Aug 15 23:44:02 1996
+--- bash-2.0/eval.c	Sat Aug 16 12:01:50 1997
+***************
+*** 70,76 ****
+--- 70,81 ----
+  #endif /* PROCESS_SUBSTITUTION */
+  
+        if (interactive_shell && signal_is_ignored (SIGINT) == 0)
++       {
+  	set_signal_handler (SIGINT, sigint_sighandler);
++ #ifdef SIGBREAK
++ 	set_signal_handler (SIGBREAK, sigint_sighandler);
++ #endif
++       }
+  
+        if (code != NOT_JUMPED)
+  	{
+diff -rcwB bash-orig/execute_cmd.c bash-2.0/execute_cmd.c
+*** bash-orig/execute_cmd.c	Fri Dec 20 00:22:32 1996
+--- bash-2.0/execute_cmd.c	Thu Oct 16 20:42:30 1997
+***************
+*** 453,458 ****
+--- 453,461 ----
+  	      interactive_shell = 0;
+  	      expand_aliases = 0;
+  	      asynchronous = 0;
++ #if defined (__EMX__)
++               execve_async = 1;
++ #endif /* __EMX__ */
+  	    }
+  
+  	  /* Subshells are neither login nor interactive. */
+***************
+*** 2631,2636 ****
+--- 2634,2643 ----
+        set_signal_ignored (SIGINT);
+        set_signal_handler (SIGQUIT, SIG_IGN);
+        set_signal_ignored (SIGQUIT);
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, SIG_IGN);
++       set_signal_ignored (SIGBREAK);
++ #endif
+      }
+  }
+  
+***************
+*** 2716,2721 ****
+--- 2723,2731 ----
+  	{
+  	  old_interactive = interactive;
+  	  interactive = 0;
++ #if defined (__EMX__)
++           execve_async = 1;
++ #endif /* __EMX__ */
+  	}
+  
+        subshell_environment = SUBSHELL_FORK;
+***************
+*** 3507,3518 ****
+  	 the new input.  Place it in a temporary file. */
+        if (redirectee)
+  	{
+  	  char filename[24];
+  
+- 	  /* Make the filename for the temp file. */
+  	  sprintf (filename, "/tmp/t%d-sh", (int)getpid ());
+- 
+  	  fd = open (filename, O_TRUNC | O_WRONLY | O_CREAT, 0666);
+  	  if (fd < 0)
+  	    return (errno);
+  
+--- 3517,3533 ----
+  	 the new input.  Place it in a temporary file. */
+        if (redirectee)
+  	{
++ 	  /* Make the filename for the temp file. */
++ #if !defined (__EMX__)
+  	  char filename[24];
+  
+  	  sprintf (filename, "/tmp/t%d-sh", (int)getpid ());
+  	  fd = open (filename, O_TRUNC | O_WRONLY | O_CREAT, 0666);
++ #else
++           char filename[MAXNAMLEN + 1];
++           fd = emx_tempopen((char *)&filename, O_TRUNC | O_RDWR | O_CREAT, 0666);
++ #endif
++ 
+  	  if (fd < 0)
+  	    return (errno);
+  
+***************
+*** 3520,3525 ****
+--- 3535,3541 ----
+  	  if (redirectee->word)
+  	    r = write_here_document (fd, redirectee);
+  
++ #if !defined (__EMX__)
+  	  close (fd);
+  	  if (r)
+  	    return (r);
+***************
+*** 3536,3541 ****
+--- 3552,3565 ----
+  	      close (fd);
+  	      return (r);
+  	    }
++ #else
++           lseek(fd, 0, SEEK_SET);
++           if (r)
++             {
++               close(fd);
++               return (r);
++             }
++ #endif /* __EMX__ */
+  
+  	  if (for_real)
+  	    {
+***************
+*** 3710,3715 ****
+--- 3733,3740 ----
+     The EXISTS bit is non-zero if the file is found.
+     The EXECABLE bit is non-zero the file is executble.
+     Zero is returned if the file is not found. */
++ 
++ #if !defined (__EMX__)
+  int
+  file_status (name)
+       char *name;
+***************
+*** 3773,3778 ****
+--- 3798,3898 ----
+  #endif /* !AFS */
+  }
+  
++ #else /* !__EMX__ */
++ 
++ /*---------------------------------- from config.h -*/
++ /* Existing extensions for executables */
++ char *exec_ext[EXEC_EXT_COUNT] = EXEC_EXT_ENUM;
++ /* executable extensions above should be handled by execve() */
++ /* properly, otherwise you should provide your own execve() */
++ 
++ /* Return status bits for given _EXISTING_ file */
++ int
++ file_status (name)
++      char *name;
++ {
++   struct stat finfo;
++   char *ext;
++   int i;
++   FILE *f;
++ 
++   /* Determine whether this file exists or not. */
++   if (stat (name, &finfo) < 0)
++     return (0);
++ 
++   /* If the file is a directory, then it is not "executable" in the
++      sense of the shell. */
++   if (S_ISDIR (finfo.st_mode))
++     return (FS_EXISTS | FS_DIRECTORY);
++ 
++   /* If the file has 'user-exec' bit set, then it is a executable */
++   if (X_BIT (u_mode_bits (finfo.st_mode)))
++     return (FS_EXISTS | FS_EXECABLE);
++ 
++   /* File is executable if it has one of "executable" extensions */
++   /* and its size is bigger than zero */
++   if (finfo.st_size)
++   {
++    ext = _getext2(name);    /* return *"" or pointer to extension */
++    for (i = 0; i < EXEC_EXT_COUNT; i++)
++     if ((*exec_ext[i]) && (strcmp(ext, exec_ext[i]) == 0))
++      return (FS_EXISTS | FS_EXECABLE);
++ 
++    /* File is executable if it starts with "#[! \n]" or "MZ" or "LX" or "NE" */
++    if (f = fopen(name, "r"))
++    {
++     char ch1 = fgetc(f);
++     char ch2 = fgetc(f);
++     fclose(f);
++     if (((ch1 == '#') && ((ch2 == '!') || (ch2 == ' ') || (ch2 == '\n'))) ||
++         ((ch1 == 'M') && (ch2 == 'Z')) ||
++         ((ch1 == 'L') && (ch2 == 'X')) ||
++         ((ch1 == 'N') && (ch2 == 'E'))
++        )
++      return (FS_EXISTS | FS_EXECABLE);
++    }
++   }
++ 
++   return (FS_EXISTS);
++ }
++ 
++ /* Return status bits for given file */
++ /* If file doesnt't exist, try to append */
++ /* all available 'executable' extensions */
++ int ext_file_status(char **name)
++ {
++  int status, trycount, name_len = strlen(*name);
++  char *tryname = (char *)alloca(name_len + 5);
++ 
++  strcpy(tryname, *name);
++  for (trycount = 0; trycount < EXEC_EXT_COUNT; trycount++)
++  {
++   strcpy(&tryname[name_len], exec_ext[trycount]);
++ 
++   status = file_status (tryname);
++   if ((status & FS_EXISTS))
++   {
++    struct stat finfo;
++ 
++    /* Check file size */
++    if ((stat (tryname, &finfo) < 0) || (finfo.st_size == 0))
++     continue;
++ 
++    status |= FS_EXECABLE;
++    if (*exec_ext[trycount])
++    {
++     free (*name);
++     *name = xmalloc(name_len = (strlen(tryname) + 1));
++     bcopy(tryname, *name, name_len);
++    }
++    break;
++   }
++  }
++  return status;
++ }
++ 
++ #endif /* !__EMX__ */
++ 
+  /* Return non-zero if FILE exists and is executable.
+     Note that this function is the definition of what an
+     executable file is; do not change this unless YOU know
+***************
+*** 3839,3845 ****
+--- 3959,3974 ----
+      path_list = (char *)NULL;
+  
+    if (path_list == 0 || *path_list == '\0')
++ #if !defined (__EMX__)
+      return (savestring (name));
++ #else    
++     {
++      char *tmp = savestring(name);
++      /* Allow ext_file_status to prepend a extension */
++      ext_file_status(&tmp);
++      return tmp;
++     }
++ #endif /* !__EMX__ */
+  
+    return (find_user_command_in_path (name, path_list, flags));
+  }
+***************
+*** 3928,3936 ****
+--- 4057,4070 ----
+    if (hashed_file)
+        command = savestring (hashed_file);
+    else if (absolute_program (pathname))
++     {
+      /* A command containing a slash is not looked up in PATH or saved in
+         the hash table. */
+        command = savestring (pathname);
++ #if defined (__EMX__)
++       ext_file_status(&command);/* Allow ext_file_status to append a extension */
++ #endif /* __EMX__ */
++     }
+    else
+      {
+        /* If $PATH is in the temporary environment, we've already retrieved
+***************
+*** 4054,4060 ****
+--- 4188,4198 ----
+  {
+    int st;
+  
++ #ifdef __EMX__
++   st = ext_file_status(&name);
++ #else
+    st = file_status (name);
++ #endif
+  
+    /* If the file doesn't exist, quit now. */
+    if ((st & FS_EXISTS) == 0)
+***************
+*** 4063,4069 ****
+    /* If we only care about whether the file exists or not, return
+       this filename.  Otherwise, maybe we care about whether this
+       file is executable.  If it is, and that is what we want, return it. */
+!   if ((flags & FS_EXISTS) || ((flags & FS_EXEC_ONLY) && (st & FS_EXECABLE)))
+      return (savestring (name));
+  
+    return ((char *)NULL);
+--- 4201,4208 ----
+    /* If we only care about whether the file exists or not, return
+       this filename.  Otherwise, maybe we care about whether this
+       file is executable.  If it is, and that is what we want, return it. */
+!   if ((flags & FS_EXISTS) || ((flags & FS_EXEC_ONLY) && (st & FS_EXECABLE)) ||
+!       (flags & FS_EXEC_PREFERRED))
+      return (savestring (name));
+  
+    return ((char *)NULL);
+***************
+*** 4087,4093 ****
+--- 4226,4236 ----
+  
+    full_path = make_full_pathname (xpath, name, name_len);
+  
++ #ifdef __EMX__
++   status = ext_file_status (&full_path);
++ #else
+    status = file_status (full_path);
++ #endif
+  
+    if (xpath != path)
+      free (xpath);
+diff -rcwB bash-orig/general.c bash-2.0/general.c
+*** bash-orig/general.c	Wed Oct 23 17:57:34 1996
+--- bash-2.0/general.c	Mon Oct  6 20:20:36 1997
+***************
+*** 459,464 ****
+--- 459,475 ----
+       char *path1, *path2;
+       struct stat *stp1, *stp2;
+  {
++ #ifdef __EMX__
++ 
++   char *abs1 = alloca(FILENAME_MAX + 1);
++   char *abs2 = alloca(FILENAME_MAX + 1);
++ 
++   _abspath(abs1, path1, FILENAME_MAX + 1);
++   _abspath(abs2, path2, FILENAME_MAX + 1);
++   return (strcmp(abs1, abs2) == 0);
++ 
++ #else /* __EMX__ */
++ 
+    struct stat st1, st2;
+  
+    if (stp1 == NULL)
+***************
+*** 476,481 ****
+--- 487,494 ----
+      }
+  
+    return ((stp1->st_dev == stp2->st_dev) && (stp1->st_ino == stp2->st_ino));
++ 
++ #endif /* __EMX__ */
+  }
+  
+  /* Move FD to a number close to the maximum number of file descriptors
+***************
+*** 709,715 ****
+--- 722,732 ----
+    char *result;
+    int result_len;
+  
++ #if !defined (__EMX__)
+    if (!dot_path || *string == '/')
++ #else  /* __EMX__ */
++   if (!dot_path || *string == '/' || string[1] == ':')
++ #endif /* __EMX__ */
+      result = savestring (string);
+    else
+      {
+***************
+*** 754,759 ****
+--- 771,782 ----
+  	   (*string == '.' && (string[1] == '\0' || string[1] == '/')))
+  	return (1);
+      }
++ 
++ #if defined(__EMX__)
++   if (*string == ':')
++     return (1);
++ #endif
++ 
+    return (0);
+  }
+  
+***************
+*** 764,770 ****
+--- 787,798 ----
+  absolute_program (string)
+       char *string;
+  {
++ #if !defined (__EMX__)
+    return ((char *)strchr (string, '/') != (char *)NULL);
++ #else
++   return ((char *)strchr (string, '/') != (char *)NULL) ||
++          ((char *)strchr (string, ':') != (char *)NULL);
++ #endif /* __EMX__ */
+  }
+  
+  /* Return the `basename' of the pathname in STRING (the stuff after the
+***************
+*** 779,784 ****
+--- 807,817 ----
+      return (string);
+  
+    p = (char *)strrchr (string, '/');
++ #if defined (__EMX__)
++   if (p == NULL)
++     p = (char *)strrchr (string, ':');
++ #endif /* __EMX__ */
++ 
+    return (p ? ++p : string);
+  }
+  
+***************
+*** 796,802 ****
+--- 829,839 ----
+  
+    file = (*file == '~') ? bash_tilde_expand (file) : savestring (file);
+  
++ #if !defined (__EMX__)
+    if ((*file == '/') && absolute_pathname (file))
++ #else
++   if (((*file == '/') || (file[1] == ':')) && absolute_pathname (file))
++ #endif /* __EMX__ */
+      return (file);
+  
+    disposer = file;
+***************
+*** 871,880 ****
+       `:'.  If I is 0, then the path has a leading colon.  Trailing colons
+       are handled OK by the `else' part of the if statement; an empty
+       string is returned in that case. */
+!   if (i && string[i] == ':')
+      i++;
+  
+!   for (start = i; string[i] && string[i] != ':'; i++)
+      ;
+  
+    *p_index = i;
+--- 908,917 ----
+       `:'.  If I is 0, then the path has a leading colon.  Trailing colons
+       are handled OK by the `else' part of the if statement; an empty
+       string is returned in that case. */
+!   if (i && string[i] == PATH_SEPARATOR)
+      i++;
+  
+!   for (start = i; string[i] && string[i] != PATH_SEPARATOR; i++)
+      ;
+  
+    *p_index = i;
+***************
+*** 895,901 ****
+        value [len] = '\0';
+      }
+  
+!   return (value);
+  }
+  
+  /* **************************************************************** */
+--- 932,938 ----
+        value [len] = '\0';
+      }
+  
+!   return UNIXIFY_PATH(value);
+  }
+  
+  /* **************************************************************** */
+diff -rcwB bash-orig/general.h bash-2.0/general.h
+*** bash-orig/general.h	Tue Aug 13 23:41:36 1996
+--- bash-2.0/general.h	Thu Jul 17 12:51:44 1997
+***************
+*** 89,94 ****
+--- 89,102 ----
+     splitting. */
+  #define spctabnl(c)	((c) == ' ' || (c) == '\t' || (c) == '\n')
+  
++ #ifndef PATH_SEPARATOR
++ #define PATH_SEPARATOR ':'
++ #endif
++ 
++ #ifndef UNIXIFY_PATH
++ #define UNIXIFY_PATH(path) (path)
++ #endif
++ 
+  /* All structs which contain a `next' field should have that field
+     as the first field in the struct.  This means that functions
+     can be written to handle the general case for linked lists. */
+diff -rcwB bash-orig/input.c bash-2.0/input.c
+*** bash-orig/input.c	Wed Nov 20 19:33:12 1996
+--- bash-2.0/input.c	Tue Oct  7 08:34:24 1997
+***************
+*** 269,275 ****
+--- 269,280 ----
+  }
+  
+  /* Return 1 if a seek on FD will succeed. */
++ #if !defined (__EMX__)
+  #define fd_is_seekable(fd) (lseek ((fd), 0L, SEEK_CUR) >= 0)
++ #else
++ /* EMX has its own buffering, besides it does CR/LF->LF translation */
++ #define fd_is_seekable(fd) 0
++ #endif /* __EMX__ */
+  
+  /* Take FD, a file descriptor, and create and return a buffered stream
+     corresponding to it.  If something is wrong and the file descriptor
+diff -rcwB bash-orig/lib/readline/bind.c bash-2.0/lib/readline/bind.c
+*** bash-orig/lib/readline/bind.c	Sat Nov 23 01:34:02 1996
+--- bash-2.0/lib/readline/bind.c	Mon Aug  4 19:06:32 1997
+***************
+*** 556,562 ****
+--- 556,566 ----
+    i = read (file, buffer, finfo.st_size);
+    close (file);
+  
++ #if !defined (__EMX__)
+    if (i != finfo.st_size)
++ #else
++   if ((finfo.st_size = i) <= 0)
++ #endif /* __EMX__ */
+      return (errno);
+  
+    /* Loop over the lines in the file.  Lines that start with `#' are
+diff -rcwB bash-orig/lib/readline/complete.c bash-2.0/lib/readline/complete.c
+*** bash-orig/lib/readline/complete.c	Fri Nov 22 21:25:08 1996
+--- bash-2.0/lib/readline/complete.c	Mon Aug 18 00:48:12 1997
+***************
+*** 302,308 ****
+--- 302,319 ----
+  {
+    char *temp;
+  
++ #if !defined (__EMX__)
+    temp = rl_filename_completion_desired ? strrchr (pathname, '/') : (char *)NULL;
++ #else
++   if (rl_filename_completion_desired)
++     {
++       char *temp2 = strrchr (pathname, ':');
++       temp = strrchr (pathname, '/');
++       if (temp2 > temp) temp = temp2;
++     }
++   else
++     temp = (char *)NULL;
++ #endif /* !__EMX__ */
+    return (temp ? ++temp : pathname);
+  }
+  
+***************
+*** 1343,1348 ****
+--- 1353,1364 ----
+        dirname = savestring (text);
+  
+        temp = strrchr (dirname, '/');
++ #ifdef __EMX__
++       {
++        char *temp2 = strrchr (dirname, ':');
++        if (temp2 > temp) temp = temp2;
++       }
++ #endif /* __EMX__ */
+  
+        if (temp)
+  	{
+diff -rcwB bash-orig/lib/readline/histfile.c bash-2.0/lib/readline/histfile.c
+*** bash-orig/lib/readline/histfile.c	Mon Mar 27 22:56:04 1995
+--- bash-2.0/lib/readline/histfile.c	Sun Oct 26 14:15:50 1997
+***************
+*** 128,134 ****
+--- 128,138 ----
+  
+    buffer = xmalloc ((int)finfo.st_size + 1);
+  
++ #if !defined (__EMX__)
+    if (read (file, buffer, finfo.st_size) != finfo.st_size)
++ #else
++   if ((finfo.st_size = read (file, buffer, finfo.st_size)) <= 0)
++ #endif
+      {
+    error_and_exit:
+        if (file >= 0)
+***************
+*** 234,240 ****
+       truncate to. */
+    if (i && ((file = open (filename, O_WRONLY|O_TRUNC, 0666)) != -1))
+      {
+!       write (file, buffer + i, finfo.st_size - i);
+        close (file);
+      }
+  
+--- 238,244 ----
+       truncate to. */
+    if (i && ((file = open (filename, O_WRONLY|O_TRUNC, 0666)) != -1))
+      {
+!       write (file, buffer + i, chars_read - i);
+        close (file);
+      }
+  
+diff -rcwB bash-orig/lib/readline/input.c bash-2.0/lib/readline/input.c
+*** bash-orig/lib/readline/input.c	Wed Dec 11 19:59:34 1996
+--- bash-2.0/lib/readline/input.c	Mon Aug  4 09:40:12 1997
+***************
+*** 239,245 ****
+    result = ioctl (tty, FIONREAD, &chars_avail);
+  #endif
+  
+! #if defined (O_NDELAY)
+    if (result == -1)
+      {
+        tem = fcntl (tty, F_GETFL, 0);
+--- 239,245 ----
+    result = ioctl (tty, FIONREAD, &chars_avail);
+  #endif
+  
+! #if defined (O_NDELAY) && !defined (__EMX__)
+    if (result == -1)
+      {
+        tem = fcntl (tty, F_GETFL, 0);
+***************
+*** 399,405 ****
+--- 399,409 ----
+  
+    while (1)
+      {
++ #if !defined (__EMX__)
+        result = read (fileno (stream), &c, sizeof (unsigned char));
++ #else /* __EMX__ */
++       result = enh_read (fileno (stream), &c, sizeof (unsigned char));
++ #endif /* __EMX__ */
+  
+        if (result == sizeof (unsigned char))
+  	return (c);
+diff -rcwB bash-orig/lib/readline/rltty.c bash-2.0/lib/readline/rltty.c
+*** bash-orig/lib/readline/rltty.c	Fri Oct  4 22:19:26 1996
+--- bash-2.0/lib/readline/rltty.c	Sat Aug 16 12:31:58 1997
+***************
+*** 92,97 ****
+--- 92,100 ----
+    sigemptyset (&sigint_set);
+    sigemptyset (&sigint_oset);
+    sigaddset (&sigint_set, SIGINT);
++ #ifdef SIGBREAK
++   sigaddset (&sigint_set, SIGBREAK);
++ #endif
+    sigprocmask (SIG_BLOCK, &sigint_set, &sigint_oset);
+  #else /* !HAVE_POSIX_SIGNALS */
+  #  if defined (HAVE_BSD_SIGNALS)
+***************
+*** 519,525 ****
+  rl_prep_terminal (meta_flag)
+       int meta_flag;
+  {
+! #if !defined (__GO32__)
+    int tty;
+    TIOTYPE tio;
+  
+--- 522,528 ----
+  rl_prep_terminal (meta_flag)
+       int meta_flag;
+  {
+! #if !defined (__GO32__) && !defined(__EMX__)
+    int tty;
+    TIOTYPE tio;
+  
+***************
+*** 554,560 ****
+    terminal_prepped = 1;
+  
+    release_sigint ();
+! #endif /* !__GO32__ */
+  }
+  
+  /* Restore the terminal's normal settings and modes. */
+--- 557,563 ----
+    terminal_prepped = 1;
+  
+    release_sigint ();
+! #endif /* !__GO32__ && !__EMX__ */
+  }
+  
+  /* Restore the terminal's normal settings and modes. */
+diff -rcwB bash-orig/lib/readline/signals.c bash-2.0/lib/readline/signals.c
+*** bash-orig/lib/readline/signals.c	Fri Oct 18 23:47:46 1996
+--- bash-2.0/lib/readline/signals.c	Sun Oct 26 16:17:34 1997
+***************
+*** 128,133 ****
+--- 128,136 ----
+  
+    switch (sig)
+      {
++ #ifdef SIGBREAK
++     case SIGBREAK:
++ #endif
+      case SIGINT:
+        {
+  	register HIST_ENTRY *entry;
+***************
+*** 250,257 ****
+--- 253,268 ----
+  #endif
+  
+    oh = rl_set_sighandler (SIGINT, rl_signal_handler, &old_int);
++ #ifdef SIGBREAK
++   rl_set_sighandler (SIGBREAK, rl_signal_handler, &old_int);
++ #endif
+    if (oh == (SigHandler *)SIG_IGN)
++     {
+        rl_sigaction (SIGINT, &old_int, &dummy);
++ #ifdef SIGBREAK
++       rl_sigaction (SIGBREAK, &old_int, &dummy);
++ #endif
++     }
+  
+    oh = rl_set_sighandler (SIGALRM, rl_signal_handler, &old_alrm);
+    if (oh == (SigHandler *)SIG_IGN)
+***************
+*** 307,312 ****
+--- 318,326 ----
+  #endif
+  
+    rl_sigaction (SIGINT, &old_int, &dummy);
++ #ifdef SIGBREAK
++   rl_sigaction (SIGBREAK, &old_int, &dummy);
++ #endif
+    rl_sigaction (SIGALRM, &old_alrm, &dummy);
+  
+  #if !defined (SHELL)
+diff -rcwB bash-orig/lib/readline/terminal.c bash-2.0/lib/readline/terminal.c
+*** bash-orig/lib/readline/terminal.c	Thu Nov 21 21:01:38 1996
+--- bash-2.0/lib/readline/terminal.c	Mon Aug  4 09:22:12 1997
+***************
+*** 199,204 ****
+--- 199,213 ----
+      }
+  #endif /* TIOCGWINSZ */
+  
++ #if defined(__EMX__)
++   {
++    int sz[2];
++    _scrsize(&sz[0]);
++    screenwidth = sz[0];
++    screenheight = sz[1] - 1;
++   }
++ #endif
++ 
+    /* Environment variable COLUMNS overrides setting of "co" if IGNORE_ENV
+       is unset. */
+    if (screenwidth <= 0)
+diff -rcwB bash-orig/Makefile.in bash-2.0/Makefile.in
+*** bash-orig/Makefile.in	Wed Dec 18 22:57:20 1996
+--- bash-2.0/Makefile.in	Sun Oct 26 20:09:40 1997
+***************
+*** 21,27 ****
+  topdir = @top_srcdir@
+  BUILD_DIR = @BUILD_DIR@
+  srcdir = @srcdir@
+! VPATH = .:@srcdir@
+  
+  @SET_MAKE@
+  CC = @CC@
+--- 21,27 ----
+  topdir = @top_srcdir@
+  BUILD_DIR = @BUILD_DIR@
+  srcdir = @srcdir@
+! VPATH = .:@srcdir@:support/@host@
+  
+  @SET_MAKE@
+  CC = @CC@
+***************
+*** 85,91 ****
+  CCFLAGS	= $(PROFILE_FLAGS) $(SYSTEM_FLAGS) -DSHELL \
+  	  $(DEFS) $(LOCAL_CFLAGS) $(CPPFLAGS) $(INCLUDES) $(CFLAGS)
+  
+! INCLUDES = -I. -I$(srcdir) -I$(LIBSRC)
+  
+  GCC_LINT_FLAGS = -ansi -Wall -Wshadow -Wpointer-arith -Wcast-qual \
+  		 -Wwrite-strings -Werror -Wstrict-prototypes \
+--- 85,91 ----
+  CCFLAGS	= $(PROFILE_FLAGS) $(SYSTEM_FLAGS) -DSHELL \
+  	  $(DEFS) $(LOCAL_CFLAGS) $(CPPFLAGS) $(INCLUDES) $(CFLAGS)
+  
+! INCLUDES = -I. -I$(srcdir) -I$(LIBSRC) -Isupport/@host@
+  
+  GCC_LINT_FLAGS = -ansi -Wall -Wshadow -Wpointer-arith -Wcast-qual \
+  		 -Wwrite-strings -Werror -Wstrict-prototypes \
+***************
+*** 350,356 ****
+  	$(RM) $@
+  	$(PURIFY) $(CC) $(LDFLAGS) $(BUILTINS_LDFLAGS) $(LIBRARY_LDFLAGS) -o $(Program) $(OBJECTS) $(LIBS)
+  	ls -l $(Program)
+! 	size $(Program)
+  
+  .build:	$(SOURCES) config.h Makefile mkversion version.h .machine
+  	@echo
+--- 350,356 ----
+  	$(RM) $@
+  	$(PURIFY) $(CC) $(LDFLAGS) $(BUILTINS_LDFLAGS) $(LIBRARY_LDFLAGS) -o $(Program) $(OBJECTS) $(LIBS)
+  	ls -l $(Program)
+! 	-size $(Program)
+  
+  .build:	$(SOURCES) config.h Makefile mkversion version.h .machine
+  	@echo
+***************
+*** 425,431 ****
+  		$(MAKE) $(MFLAGS) libtermcap.a) || exit 1
+  
+  mksignames:	$(SUPPORT_SRC)mksignames.c
+! 	$(CC) $(CCFLAGS) $(CPPFLAGS) -o $@ $(SUPPORT_SRC)mksignames.c
+  
+  signames.h:   mksignames
+  	$(RM) $@
+--- 425,431 ----
+  		$(MAKE) $(MFLAGS) libtermcap.a) || exit 1
+  
+  mksignames:	$(SUPPORT_SRC)mksignames.c
+! 	$(CC) $(CCFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(SUPPORT_SRC)mksignames.c
+  
+  signames.h:   mksignames
+  	$(RM) $@
+***************
+*** 468,474 ****
+  #	cd $(srcdir) && autoconf
+  
+  mkversion:	$(SUPPORT_SRC)mkversion.c
+! 	$(CC) $(CCFLAGS) -I.. -o $@ $(SUPPORT_SRC)mkversion.c
+  
+  newversion:	mkversion
+  	$(RM) .build
+--- 468,474 ----
+  #	cd $(srcdir) && autoconf
+  
+  mkversion:	$(SUPPORT_SRC)mkversion.c
+! 	$(CC) $(CCFLAGS) $(LDFLAGS) -I.. -o $@ $(SUPPORT_SRC)mkversion.c
+  
+  newversion:	mkversion
+  	$(RM) .build
+diff -rcwB bash-orig/nojobs.c bash-2.0/nojobs.c
+*** bash-orig/nojobs.c	Mon Oct 21 21:12:42 1996
+--- bash-2.0/nojobs.c	Sun Oct 26 16:17:14 1997
+***************
+*** 291,296 ****
+--- 291,299 ----
+  initialize_job_signals ()
+  {
+    set_signal_handler (SIGINT, sigint_sighandler);
++ #ifdef SIGBREAK
++   set_signal_handler (SIGBREAK, sigint_sighandler);
++ #endif
+    set_sigwinch_handler ();
+  
+    /* If this is a login shell we don't wish to be disturbed by
+***************
+*** 370,375 ****
+--- 373,382 ----
+  
+    if (pid == 0)
+      {
++ #if defined (__EMX__)
++       dlreload();			/* reload dynamically linked commands */
++ #endif /* __EMX__ */
++ 
+  #if defined (BUFFERED_INPUT)
+        if (default_buffered_input > 0)
+  	{
+***************
+*** 396,402 ****
+--- 403,413 ----
+        last_made_pid = pid;
+  
+        if (async_p)
++ #if !defined (__EMX__)
+  	last_asynchronous_pid = pid;
++ #else  /* OS/2 does spawn() instead of exec() */
++ 	pid = last_made_pid = last_asynchronous_pid = emx_realpid(pid);
++ #endif /* !__EMX__ */
+  
+        add_pid (pid);
+      }
+***************
+*** 521,526 ****
+--- 532,540 ----
+    pid_t got_pid;
+    WAIT status;
+    SigHandler *old_sigint_handler;
++ #ifdef SIGBREAK
++   SigHandler *old_sigbrk_handler;
++ #endif
+  
+    pstatus = find_status_by_pid (pid);
+  
+***************
+*** 533,539 ****
+--- 547,558 ----
+    /* If we are running a script, ignore SIGINT while we're waiting for
+       a child to exit.  The loop below does some of this, but not all. */
+    if (!interactive_shell)
++   {
+      old_sigint_handler = set_signal_handler (SIGINT, wait_sigint_handler);
++ #ifdef SIGBREAK
++ //    old_sigbrk_handler = set_signal_handler (SIGBREAK, wait_sigint_handler);
++ #endif
++   }
+  
+    while ((got_pid = WAITPID (-1, &status, 0)) != pid) /* XXX was pid now -1 */
+      {
+***************
+*** 562,570 ****
+--- 581,596 ----
+    if (interactive_shell == 0)
+      {
+        set_signal_handler (SIGINT, old_sigint_handler);
++ #ifdef SIGBREAK
++ //      set_signal_handler (SIGBREAK, old_sigbrk_handler);
++ #endif
+        /* If the job exited because of SIGINT, make sure the shell acts as if
+  	 it had received one also. */
++ #ifndef SIGBREAK
+        if (WIFSIGNALED (status) && (WTERMSIG (status) == SIGINT))
++ #else
++       if (WIFSIGNALED (status) && ((WTERMSIG (status) == SIGINT) || (WTERMSIG (status) == SIGBREAK)))
++ #endif
+  	{
+  	  if (maybe_call_trap_handler (SIGINT) == 0)
+  	    (*old_sigint_handler) (SIGINT);
+***************
+*** 579,585 ****
+--- 605,615 ----
+      return_val = WEXITSTATUS (status);
+  
+    if (!WIFSTOPPED (status) && WIFSIGNALED (status) &&
++ #ifndef SIGBREAK
+        (WTERMSIG (status) != SIGINT))
++ #else
++       ((WTERMSIG (status) != SIGINT) && (WTERMSIG (status) != SIGBREAK)))
++ #endif
+      {
+        fprintf (stderr, "%s", strsignal (WTERMSIG (status)));
+        if (WIFCORED (status))
+diff -rcwB bash-orig/parse.y bash-2.0/parse.y
+*** bash-orig/parse.y	Mon Dec 16 18:51:12 1996
+--- bash-2.0/parse.y	Sat Aug 16 12:37:38 1997
+***************
+*** 907,912 ****
+--- 907,915 ----
+        if (signal_is_ignored (SIGINT) == 0)
+  	{
+  	  old_sigint = (SigHandler *)set_signal_handler (SIGINT, sigint_sighandler);
++ #ifdef SIGBREAK
++ 	  set_signal_handler (SIGBREAK, sigint_sighandler);
++ #endif
+  	  interrupt_immediately++;
+  	}
+  
+***************
+*** 917,922 ****
+--- 920,928 ----
+  	{
+  	  interrupt_immediately--;
+  	  set_signal_handler (SIGINT, old_sigint);
++ #ifdef SIGBREAK
++ 	  set_signal_handler (SIGBREAK, old_sigint);
++ #endif
+  	}
+  
+  #if 0
+diff -rcwB bash-orig/shell.c bash-2.0/shell.c
+*** bash-orig/shell.c	Wed Dec 18 23:16:50 1996
+--- bash-2.0/shell.c	Sun Oct 26 21:35:16 1997
+***************
+*** 257,262 ****
+--- 257,271 ----
+    if (code)
+      exit (2);
+  
++ #if defined (__EMX__)
++   /* Do a savestring since bash does later a free() on shell_name (in */
++   /* find_user_command) and this fails since argv[] is not malloc`ed */
++   argv[0] = UNIXIFY_PATH(savestring(argv[0]));
++   emx_initialize();
++   /* Load BASH resident into memory for a ${BASHLOAD} period of time */
++   _emxload_env ("BASHLOAD");
++ #endif /* __EMX__ */
++ 
+    check_dev_tty ();
+  
+    /* Wait forever if we are debugging a login shell. */
+***************
+*** 730,735 ****
+--- 739,750 ----
+  static void
+  run_startup_files ()
+  {
++ #if defined (__EMX__)
++   /* In OS/2, we should always define some aliases */
++   /* to ensure Unix compatibility */
++   execute_env_file (get_string_value ("BASH_STARTUP"));
++ #endif
++ 
+    /* get the rshd case out of the way first. */
+    if (interactive_shell == 0 && no_rc == 0 && login_shell == 0 &&
+        act_like_sh == 0 && local_pending_command && isnetconn (fileno (stdin)))
+diff -rcwB bash-orig/sig.c bash-2.0/sig.c
+*** bash-orig/sig.c	Fri Oct  4 20:00:38 1996
+--- bash-2.0/sig.c	Sun Oct 26 16:17:28 1997
+***************
+*** 109,114 ****
+--- 109,118 ----
+    SIGINT, NULL_HANDLER,
+  #endif
+  
++ #ifdef SIGBREAK
++   SIGBREAK, NULL_HANDLER,
++ #endif
++ 
+  #ifdef SIGILL
+    SIGILL, NULL_HANDLER,
+  #endif
+***************
+*** 255,260 ****
+--- 259,267 ----
+    if (interactive)
+      {
+        set_signal_handler (SIGINT, sigint_sighandler);
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, sigint_sighandler);
++ #endif
+        set_signal_handler (SIGTERM, SIG_IGN);
+      }
+  }
+***************
+*** 367,373 ****
+  termination_unwind_protect (sig)
+       int sig;
+  {
+!   if (sig == SIGINT && signal_is_trapped (SIGINT))
+      run_interrupt_trap ();
+  
+  #if defined (HISTORY)
+--- 374,384 ----
+  termination_unwind_protect (sig)
+       int sig;
+  {
+!   if ((sig == SIGINT && signal_is_trapped (SIGINT))
+! #ifdef SIGBREAK
+!    || (sig == SIGBREAK && signal_is_trapped (SIGBREAK))
+! #endif
+!      )
+      run_interrupt_trap ();
+  
+  #if defined (HISTORY)
+diff -rcwB bash-orig/siglist.c bash-2.0/siglist.c
+*** bash-orig/siglist.c	Mon Jul 22 21:43:04 1996
+--- bash-2.0/siglist.c	Sat Aug 16 12:21:10 1997
+***************
+*** 54,59 ****
+--- 54,63 ----
+    sys_siglist[SIGINT] = "Interrupt";
+  #endif
+  
++ #if defined (SIGBREAK)
++   sys_siglist[SIGBREAK] = "Interrupt";
++ #endif
++ 
+  #if defined (SIGQUIT)
+    sys_siglist[SIGQUIT] = "Quit";
+  #endif
+diff -rcwB bash-orig/support/config.guess bash-2.0/support/config.guess
+*** bash-orig/support/config.guess	Mon Dec  9 21:33:48 1996
+--- bash-2.0/support/config.guess	Sun Oct 26 15:42:34 1997
+***************
+*** 642,647 ****
+--- 642,650 ----
+      *3b2*:*:*:*)
+  	echo we32k-att-sysv3
+  	exit 0 ;;
++     i*86:*OS/2*:*)
++ 	echo i386-ibm-os2
++ 	exit 0 ;;
+  esac
+  
+  #echo '(No uname command or uname output not recognized.)' 1>&2
+diff -rcwB bash-orig/support/config.sub bash-2.0/support/config.sub
+*** bash-orig/support/config.sub	Fri Sep 13 17:37:36 1996
+--- bash-2.0/support/config.sub	Sun Oct 26 15:52:24 1997
+***************
+*** 729,734 ****
+--- 729,737 ----
+  	-xenix)
+  		os=-xenix
+  		;;
++ 	-os2*)
++ 		os=-os2
++ 		;;
+  	-none)
+  		;;
+  	*)
+diff -rcwB bash-orig/support/mksignames.c bash-2.0/support/mksignames.c
+*** bash-orig/support/mksignames.c	Wed Nov 20 19:32:16 1996
+--- bash-2.0/support/mksignames.c	Sun Oct 26 17:48:10 1997
+***************
+*** 65,70 ****
+--- 65,74 ----
+    signal_names[SIGINT] = "SIGINT";
+  #endif
+  
++ #if defined (SIGBREAK)	/* interrupt */
++   signal_names[SIGBREAK] = "SIGBREAK";
++ #endif
++ 
+  #if defined (SIGQUIT)	/* quit */
+    signal_names[SIGQUIT] = "SIGQUIT";
+  #endif
+diff -rcwB bash-orig/test.c bash-2.0/test.c
+*** bash-orig/test.c	Mon Nov 11 19:50:58 1996
+--- bash-2.0/test.c	Tue Sep 16 18:28:32 1997
+***************
+*** 139,145 ****
+  	do { test_error_return = val; longjmp (test_exit_buf, 1); } while (0)
+  #endif /* STANDALONE */
+  
+! #if defined (AFS)
+    /* We have to use access(2) for machines running AFS, because it's
+       not a Unix file system.  This may produce incorrect answers for
+       non-AFS files.  I hate AFS. */
+--- 139,145 ----
+  	do { test_error_return = val; longjmp (test_exit_buf, 1); } while (0)
+  #endif /* STANDALONE */
+  
+! #if defined (AFS) || defined(__EMX__)
+    /* We have to use access(2) for machines running AFS, because it's
+       not a Unix file system.  This may produce incorrect answers for
+       non-AFS files.  I hate AFS. */
+diff -rcwB bash-orig/trap.c bash-2.0/trap.c
+*** bash-orig/trap.c	Fri Dec 20 20:39:14 1996
+--- bash-2.0/trap.c	Sun Oct 26 16:17:24 1997
+***************
+*** 114,119 ****
+--- 114,126 ----
+    set_signal_handler (SIGINT, original_signals[SIGINT]);
+    sigmodes[SIGINT] |= SIG_SPECIAL;
+  
++ #ifdef SIGBREAK
++   original_signals[SIGBREAK] =
++     (SigHandler *) set_signal_handler (SIGBREAK, SIG_DFL);
++   set_signal_handler (SIGBREAK, original_signals[SIGBREAK]);
++   sigmodes[SIGBREAK] |= SIG_SPECIAL;
++ #endif
++ 
+    original_signals[SIGQUIT] =
+      (SigHandler *) set_signal_handler (SIGQUIT, SIG_DFL);
+    set_signal_handler (SIGQUIT, original_signals[SIGQUIT]);
+***************
+*** 194,200 ****
+  #  endif
+  #endif /* HAVE_POSIX_SIGNALS */
+  
+! 	  if (sig == SIGINT)
+  	    {
+  	      run_interrupt_trap ();
+  	      CLRINTERRUPT;
+--- 201,211 ----
+  #  endif
+  #endif /* HAVE_POSIX_SIGNALS */
+  
+! 	  if (sig == SIGINT
+! #ifdef SIGBREAK
+!            || sig == SIGBREAK
+! #endif
+!              )
+  	    {
+  	      run_interrupt_trap ();
+  	      CLRINTERRUPT;
+***************
+*** 273,278 ****
+--- 284,292 ----
+       char *command;
+  {
+    set_signal (SIGINT, command);
++ #ifdef SIGBREAK
++   set_signal (SIGBREAK, command);
++ #endif
+  }
+  
+  /* Reset the SIGINT handler so that subshells that are doing `shellsy'
+***************
+*** 285,301 ****
+--- 299,335 ----
+      return ((SigHandler *)SIG_IGN);
+  
+    else if (sigmodes[SIGINT] & SIG_IGNORED)
++     {
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, SIG_IGN);
++ #endif
+        return ((SigHandler *)set_signal_handler (SIGINT, SIG_IGN)); /* XXX */
++     }
+  
+    else if (sigmodes[SIGINT] & SIG_TRAPPED)
++     {
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, trap_handler);
++ #endif
+        return ((SigHandler *)set_signal_handler (SIGINT, trap_handler));
++     }
+  
+    /* The signal is not trapped, so set the handler to the shell's special
+       interrupt handler. */
+    else if (interactive)	/* XXX - was interactive_shell */
++     {
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, sigint_sighandler);
++ #endif
+        return (set_signal_handler (SIGINT, sigint_sighandler));
++     }
+    else
++     {
++ #ifdef SIGBREAK
++       set_signal_handler (SIGBREAK, termination_unwind_protect);
++ #endif
+        return (set_signal_handler (SIGINT, termination_unwind_protect));
++     }
+  }
+  
+  /* Set SIG to call STRING as a command. */
+diff -rcwB bash-orig/variables.c bash-2.0/variables.c
+*** bash-orig/variables.c	Thu Oct 17 17:29:28 1996
+--- bash-2.0/variables.c	Thu Oct  9 21:16:58 1997
+***************
+*** 1158,1163 ****
+--- 1159,1180 ----
+  {
+    char *newval;
+    SHELL_VAR *entry;
++ 
++ #ifdef __EMX__
++ /* OS/2 $PATH is separated by ';' rather than by ':', so replace ':' by ';' */
++ /* to maintain compatibility with existing scripts. Sad, but works */
++   if (strcmp(name, "IFS") == 0)
++   {
++    int i;
++ 
++    for (i = 0; i < strlen(value); i++)
++     if (value[i] == ':')
++     {
++      value[i] = ';';
++      break;
++     }
++   }
++ #endif
+  
+    entry = var_lookup (name, shell_variables);
+  

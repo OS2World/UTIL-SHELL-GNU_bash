@@ -1,0 +1,67 @@
+diff -rc sh-utils-1.12.old/lib/basename.c sh-utils-1.12/lib/basename.c
+*** sh-utils-1.12.old/lib/basename.c	Tue Sep 27 00:46:14 1994
+--- sh-utils-1.12/lib/basename.c	Thu Oct  9 19:39:16 1997
+***************
+*** 34,41 ****
+--- 34,45 ----
+  basename (name)
+       char *name;
+  {
++ #if !defined (__EMX__)
+    char *base;
+  
+    base = rindex (name, '/');
+    return base ? base + 1 : name;
++ #else
++   return _getname (name);
++ #endif
+  }
+diff -rc sh-utils-1.12.old/lib/stripslash.c sh-utils-1.12/lib/stripslash.c
+*** sh-utils-1.12.old/lib/stripslash.c	Tue Sep 27 00:42:18 1994
+--- sh-utils-1.12/lib/stripslash.c	Thu Oct  9 19:30:20 1997
+***************
+*** 38,43 ****
+--- 38,47 ----
+    int last;
+  
+    last = strlen (path) - 1;
++ #if !defined (__EMX__)
+    while (last > 0 && path[last] == '/')
++ #else
++   while (last > 0 && ((path[last] == '/') || (path[last] == '\\')))
++ #endif /* !__EMX__ */
+      path[last--] = '\0';
+  }
+diff -rc sh-utils-1.12.old/src/dirname.c sh-utils-1.12/src/dirname.c
+*** sh-utils-1.12.old/src/dirname.c	Fri Oct 21 07:59:42 1994
+--- sh-utils-1.12/src/dirname.c	Thu Oct  9 19:46:08 1997
+***************
+*** 75,88 ****
+--- 75,101 ----
+    path = argv[1];
+    strip_trailing_slashes (path);
+  
++ #if !defined (__EMX__)
+    slash = rindex (path, '/');
+    if (slash == NULL)
++ #else
++   slash = _getname (path);
++   if (slash > path) slash--;
++   if (slash == path)
++ #endif /* !__EMX__ */
+      path = (char *) ".";
+    else
+      {
+        /* Remove any trailing slashes and final element. */
++ #if !defined (__EMX__)
+        while (slash > path && *slash == '/')
+  	--slash;
++ #else
++       while (slash > path && ((*slash == '/') || (*slash == '\\')))
++ 	--slash;
++       if ((*slash == ':') && ((slash[1] == '/') || (slash[1] == '\\')))
++         slash++;
++ #endif /* !__EMX__ */
+        slash[1] = 0;
+      }
+    puts (path);

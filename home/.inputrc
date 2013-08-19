@@ -1,0 +1,134 @@
+###################################
+#                                 #
+# GNU readline configuration file #
+#                                 #
+###################################
+
+set bell-style none
+# Controls what happens when Readline wants to ring the terminal bell. If set to
+# 'none', Readline never rings the bell. If set to 'visible', Readline uses a
+# visible bell if one is available. If set to 'audible' (the default), Readline
+# attempts to ring the terminal's bell.
+
+set comment-begin #
+# The string to insert at the beginning of the line when the insert-comment
+# command is executed. The default value is "#".
+
+set completion-query-items 100
+# The number of possible completions that determines when the user is asked
+# whether he wants to see the list of possibilities. If the number of possible
+# completions is greater than this value, Readline will ask the user whether or
+# not he wishes to view them; otherwise, they are simply listed. The default
+# limit is 100.
+
+set convert-meta off
+# If set to 'on', Readline will convert characters with the eigth bit set to an
+# ASCII key sequence by stripping the eigth bit and prepending an ESC
+# character, converting them to a meta-prefixed key sequence. The default value
+# is 'on'.
+
+set disable-completion off
+# If set to 'On', readline will inhibit word completion. Completion characters
+# will be inserted into the line as if they had been mapped to self-insert. The
+# default is 'off'.
+
+set editing-mode emacs
+# The editing-mode variable controls which editing mode you are using. By
+# default, Readline starts up in Emacs editing mode, where the keystrokes are
+# most similar to Emacs. This variable can be set to either 'emacs' or 'vi'.
+
+set enable-keypad off
+# When set to 'on', readline will try to enable the application keypad when it
+# is called. Some systems need this to enable the arrow keys. The default is
+# 'off'.
+
+set expand-tilde off
+# If set to 'on', tilde expansion is performed when Readline attempts word
+# completion. The default is 'off'.
+
+set horizontal-scroll-mode off
+# This variable can be set to either 'on' or 'off'. Setting it to 'on' means
+# that the text of the lines that you edit will scroll horizontally on a
+# single screen line when they are longer than the width of the screen, instead
+# of wrapping onto a new screen line. By default, this variable is set to 'off'.
+
+set keymap emacs
+# Sets Readline's idea of the current keymap for key binding commands.
+# Acceptable keymap names are emacs, emacs-standard, emacs-meta, emacs-ctlx, vi,
+# vi-command, and vi-insert. vi is equivalent to vi-command; emacs is equivalent
+# to emacs-standard. The default value is emacs. The value of the editing-mode
+# variable also affects the default keymap.
+
+set mark-directories on
+# If set to 'on', completed directory names have a slash appended. The default
+# is 'on'.
+
+set mark-modified-lines off
+# This variable, when set to 'on', says to display an asterisk ('*') at the
+# start of history lines which have been modified. This variable is 'off' by
+# default.
+
+set input-meta on
+# If set to 'on', Readline will enable eight-bit input (it will not strip the
+# eighth bit from the characters it reads), regardless of what the terminal
+# claims it can support. The default value is 'off'. The name meta-flag is a
+# synonym for this variable.
+
+set output-meta on
+# If set to 'on', Readline will display characters with the eighth bit set
+# directly rather than as a meta-prefixed escape sequence. The default is
+# 'off'.
+
+set show-all-if-ambiguous on
+# This alters the default behavior of the completion functions. If set to 'on',
+# words which have more than one possible completion cause the matches to be
+# listed immediately instead of ringing the bell. The default value is 'off'.
+
+set visible-stats off
+# If set to 'on', a character denoting a file's type is appended to the filename
+# when listing possible completions. The default is 'off'.
+
+$if term=os2
+#------------------------------------------------------------------------------#
+# Key bindings for AT-101 enhanced keyboard under OS/2                         #
+#------------------------------------------------------------------------------#
+
+#-------------------------------- Del
+"\e[P":  delete-char
+#-------------------------------- Ctrl+Tab
+"\e]ct": tab-insert
+#-------------------------------- Ctrl+Home
+"\e[2J": clear-screen
+#-------------------------------- Ctrl+End
+"\e[K":  kill-line
+#-------------------------------- Ctrl+BackSpace
+"\e[M":  backward-kill-word
+#-------------------------------- Ctrl+Right
+"\e]c6": forward-word
+#-------------------------------- Ctrl+Left
+"\e]c4": backward-word
+#-------------------------------- Ctrl+PageUp
+"\e]c9": end-of-history
+#-------------------------------- Ctrl+PageDown
+"\e]c3": beginning-of-history
+#-------------------------------- Ctrl+Up
+"\e]c8": history-search-backward
+#-------------------------------- Ctrl+Down
+"\e]c2": history-search-forward
+#-------------------------------- Ctrl+Space
+"\e]c ": possible-completions
+#-------------------------------- Alt+[
+"\e][":  start-kbd-macro
+#-------------------------------- Alt+]
+"\e]]":  end-kbd-macro
+#-------------------------------- Alt+Enter
+"\e]ae": call-last-kbd-macro
+#-------------------------------- Alt+T
+"\eaT":  transpose-words
+#-------------------------------- Alt+U
+"\eaU":  upcase-word
+#-------------------------------- Alt+L
+"\eaL":  downcase-word
+#-------------------------------- Alt+C
+"\eaC":  capitalize-word
+$endif

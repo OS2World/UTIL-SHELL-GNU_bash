@@ -1,0 +1,7 @@
+Unpack bash-2.0 distribution; apply bash-2.00-os2(*).diff; 
+then copy make-prep-os2.sh into the root directory of bash
+distribution, and the i386-ibm-os2 directory into the
+support/ subdirectory of bash distribution.
+
+Now run "bash configure" (I hope you already have a compiled
+binary of bash), then run "bash make-prep-os2.sh"

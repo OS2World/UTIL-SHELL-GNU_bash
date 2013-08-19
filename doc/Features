@@ -1,0 +1,163 @@
+------------------------------
+differences from original bash
+------------------------------
+
+   * bash/2 translates `:' in values assigned to IFS variable into `;'.
+     This is not too correct but seems to work, so now this script
+     will work okay:
+
+	  IFS="${IFS=	}"; save_ifs="$IFS"; IFS="${IFS}:"
+	  for dir in $PATH; do
+		echo ${dir}
+	  done
+
+     while before it didn`t.
+
+   * `test -x' will return TRUE for any file. This is due to the fact that
+     OS/2 has no e`x'ecutable attribute bit on files, and can really run
+     any file.
+
+   * bash/2 has a transparent file-name translator that maps:
+
+	/dev/null    ->      /dev/nul
+	/tmp/        ->      ${TMP-/tmp/}
+	/etc/        ->      ${ETC-/etc/}
+
+     however, this only work for bash itself, i.e.
+
+	ls >/dev/null
+
+     works okay, while
+
+	ls /tmp/a*
+
+     won`t.
+
+   * Commands entered with a `&' after last character will run as DETACHed.
+     The properties of Unix programs run with `&' are slightly different.
+     example: ls&
+
+   * bash/2 appends following `executable' extensions to files when file
+     cannot be found in the order:
+
+     "", ".exe", ".cmd", ".sh",".com", ".bat", ".btm"
+
+     NOTE: Unix executables does not have suffixes, so if you have two files
+     in a directory: `z' and `z.exe' entering `z' at bash command line will
+     result in running `z' rather than `z.exe'. This is a planed behaviour,
+     and you should avoid yourself such conflicts.
+
+   * bash/2 maps the codes of some control keys to some (mostly invented
+     by me) escape sequences (alas, GNU readline doesn`t correctly handle
+     assignments of keys that contains \0, unlike tcsh). You can use them
+     to bind functions to keys, as I`ve done at the end of .inputrc file.
+     Here are escape sequences:
+
+     k_up      = "\EOA";
+     k_down    = "\EOB";
+     k_right   = "\EOC";
+     k_left    = "\EOD";
+     k_f1      = "\EOP";
+     k_f2      = "\EOQ";
+     k_f3      = "\EOR";
+     k_f4      = "\EOS";
+     k_f5      = "\EOT";
+     k_f6      = "\EOU";
+     k_f7      = "\EOV";
+     k_f8      = "\EOW";
+     k_f9      = "\EOX";
+     k_f10     = "\EOY";
+     k_c_back  = "\E[M";
+     k_ins     = "\E[@";
+     k_del     = "\E[P";
+     k_c_home  = "\E[2J";
+     k_c_end   = "\E[K";
+     k_home    = "\E]7";
+     k_end     = "\E]1";
+     k_pgup    = "\E]9";
+     k_pgdn    = "\E]3";
+     k_a_tab   = "\E]at";
+     k_c_tab   = "\E]ct";
+     k_s_tab   = "\E]st";
+     k_c_pgup  = "\E]c9";
+     k_c_pgdn  = "\E]c3";
+     k_c_up    = "\E]c8";
+     k_c_down  = "\E]c2";
+     k_c_left  = "\E]c4";
+     k_c_right = "\E]c6";
+     k_c_ins   = "\E]ci";
+     k_c_del   = "\E]cd";
+     k_s_ins   = "\E]si";
+     k_s_del   = "\E]sd";
+     k_c_space = "\E]c ";
+     k_a_lbrck = "\E][";
+     k_a_rbrck = "\E]]";
+     k_a_enter = "\E]ae";
+     k_a_a     = "\EaA";
+     k_a_b     = "\EaB";
+     k_a_c     = "\EaC";
+     k_a_d     = "\EaD";
+     k_a_e     = "\EaE";
+     k_a_f     = "\EaF";
+     k_a_g     = "\EaG";
+     k_a_h     = "\EaH";
+     k_a_i     = "\EaI";
+     k_a_j     = "\EaJ";
+     k_a_k     = "\EaK";
+     k_a_l     = "\EaL";
+     k_a_m     = "\EaM";
+     k_a_n     = "\EaN";
+     k_a_o     = "\EaO";
+     k_a_p     = "\EaP";
+     k_a_q     = "\EaQ";
+     k_a_r     = "\EaR";
+     k_a_s     = "\EaS";
+     k_a_t     = "\EaT";
+     k_a_u     = "\EaU";
+     k_a_v     = "\EaV";
+     k_a_w     = "\EaW";
+     k_a_x     = "\EaX";
+     k_a_y     = "\EaY";
+     k_a_z     = "\EaZ";
+
+   * If you run bash through the sh.exe launcher, bash will enter '/bin/sh'
+     mode - in this mode it tries to mimic as closely as possible the
+     behaviour of the standard Unix shell. The usual bash startup files
+     are not read in this mode, except for BASH_STARTUP (see below), but
+     when run in interactive mode it tries to read ~/.profile and when
+     run non-interactively it tries to read the profile pointed by
+     ENV variable. For more info see bash manual.
+
+   * EMX runtime performs command-line quotation in the following manner:
+     every " not preceeded by a odd number of backslashes is `eaten` and
+     removed; backslash-quote (\") sequences are replaced by a quote ("),
+     double-backslash sequences (if followed by a ") are replaced by a
+     single backslash. Bash 'eats' these simbols in a similar manner,
+     thus effectively the characters are eaten twice, and you`re lost.
+     To accomodate this, bash/2 re-quotes the command-line before execution,
+     but this can be a problem with some non-emx programs. So bash looks
+     for a environment variable BASH_NOQUOTEARGS which should contain a
+     list of programs, separated by semicolons (i.e. 'export BASH_QUOTEARGS=
+     "cmd;command;find"') for which bash will not re-quote the command line,
+     except it will put double-quotes around arguments that contains tabs or
+     spaces.
+
+   * bash/2 supports a new environment variable: BASH_STARTUP, which should
+     point to a script file that will be executed *always* no matter if
+     bash is run interactively, non-interactively or in /bin/sh mode.
+
+   * bash/2 looks for the environment variable BASHLOAD and uses its value
+     as the time in minutes to remain resident in memory even after quitting
+     bash (like the GCCLOAD variable for GCC). You can set this variable if
+     you have enough memory (24Mb and more) to make bash load faster. This
+     is handy when using bash as the command interpreter for makefiles.
+
+-----------------------
+Features under question
+-----------------------
+
+   * When testing for existence of files (i.e. test -f gcc) Unix scripts
+     don`t know anything about executable extensions. This results in configure
+     not finding gcc, for example. I can add a feature to `test' command
+     to search for file with different `executable' extensions, if required
+     file is not found, but don`t know if this is desirable.

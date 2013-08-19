@@ -1,0 +1,63 @@
+*** ld.c	Fri Jul  5 20:33:58 1996
+--- ..\ld.c	Thu Oct  9 18:17:04 1997
+***************
+*** 4748,4758 ****
+      {
+        ext = _getext (output_filename);
+        if (ext != NULL)
+!         fatal ("The output file name must not have a suffix if -Zexe is used",
+                 NULL);
+        touch_filename = output_filename;
+        exe_filename = concat (output_filename, ".exe", "");
+      }
+    else
+      {
+        ext = _getext2 (output_filename);
+--- 4748,4766 ----
+      {
+        ext = _getext (output_filename);
+        if (ext != NULL)
+!       {
+!        if (stricmp (ext, ".exe") != 0)
+!         fatal ("The output filename must have either .exe or no suffix if -Zexe is used",
+                 NULL);
++        exe_filename = output_filename;
++        touch_filename = concat(output_filename, "", "");
++        *_getext(touch_filename) = 0;
++       } else
++       {
+         touch_filename = output_filename;
+         exe_filename = concat (output_filename, ".exe", "");
+        }
++     }
+    else
+      {
+        ext = _getext2 (output_filename);
+***************
+*** 4935,4945 ****
+  	perror_name (exe_filename);
+        if (touch_filename != NULL)
+          {
+!           i = open (touch_filename,
+!                     O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+!           if (i < 0)
+              perror_name (touch_filename);
+-           close (i);
+          }
+      }
+    else if (exe_filename != NULL) /* RSXNT */
+--- 4943,4956 ----
+  	perror_name (exe_filename);
+        if (touch_filename != NULL)
+          {
+!           char execname[512];
+!           _execname((char *)&execname, sizeof(execname));
+!           strcpy(_getname((char *)&execname), "nullstub.exe");
+!           /* Copy stub into file */
+!           DosCopy((char *)&execname, touch_filename, 4);
+!           /* Now touch it */
+!           if (utime(touch_filename, NULL))
+              perror_name (touch_filename);
+          }
+      }
+    else if (exe_filename != NULL) /* RSXNT */

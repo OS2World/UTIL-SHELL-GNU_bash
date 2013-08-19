@@ -1,0 +1,120 @@
+
+ [;] Comment
+ [*] Modified
+ [+] Added feature
+ [-] Removed feature
+ [!] Bug fix
+
+------------------------------
+bash-2.0 build XXX, X-XXX-1997
+------------------------------
+[+] Now the archive includes the binaries for most GNU shell utilites (v1.12),
+    which will allow you (hopefully) to run without problems most Unix scripts.
+    I also included the documentation on GNU sh-utils in the INF format, so
+    you should be able to use them yourself.
+
+[*] ${OSTYPE} variable now equals to `os2' while in previous alpha it was
+    `os/2'. Keep this in mind if you already used $OSTYPE somewhere.
+
+[+] EMX runtime performs command-line quotation in the following manner:
+    every " not preceeded by a odd number of backslashes is `eaten` and
+    removed; backslash-quote (\") sequences are replaced by a quote ("),
+    double-backslash sequences (if followed by a ") are replaced by a
+    single backslash. Bash 'eats' these simbols in a similar manner,
+    thus effectively the characters are eaten twice, and you`re lost.
+    To accomodate this, bash/2 re-quotes the command-line before execution,
+    but this can be a problem with some non-emx programs. So bash looks
+    for a environment variable BASH_NOQUOTEARGS which should contain a
+    list of programs, separated by semicolons (i.e. 'export BASH_QUOTEARGS=
+    "cmd;command;find"') for which bash will not re-quote the command line,
+    except it will put double-quotes around arguments that contains tabs or
+    spaces.
+
+[+] bash/2 supports a new environment variable: BASH_STARTUP, which should
+    point to a script file that will be executed *always* no matter if
+    bash is run interactively, non-interactively or in /bin/sh mode.
+
+[+] bash/2 looks for the environment variable BASHLOAD and uses its value
+    as time in minutes to keep a resident copy of bash (like GCCLOAD for
+    gcc). This can speedup makefiles if you`re using BASH as the command
+    interpreter for make.
+
+------------------------------
+bash-2.0 build 253, 9-Oct-1997
+------------------------------
+[!] Fixed a bug that caused big troubles when running script files. EMX
+    has its own file buffering, beside this it does CR+LF -> LF translation,
+    but bash didn`t know about that. It lseek`ed backward sometimes and
+    was completely screwed up after this.
+
+[!] When running a script that has at beginning `#!/bin/sh' or other thing
+    that doesn`t exist, bash crashed before. Now it says something like:
+
+    `bash.exe: ./configure: Invalid executable file format'
+
+    I didn`t found a more appropiate errno value for this. However, you`ll
+    see this error seldom, since by default BASH tries to run such scripts
+    (if no interpreter found) itself (? maybe only if it has /bin/sh at
+    beginning).
+
+[!] Fixed a couple of bugs that didn`t allowed me to run configure from
+    egcs distribution.
+
+------------------------------
+bash-2.0 build 241, 1-Sep-1997
+------------------------------
+
+[+] Now bash maps /etc to ${ETC:-/etc}, /tmp to {$TMP:-/tmp} and /dev/null
+    to /dev/nul. Note, however, that this is ONLY for bash, so
+
+       ls >/tmp/file
+
+    will work as `ls >${TMP:-/tmp}/file' while
+
+       ls /tmp
+
+    won`t (it will look in /tmp on current drive).
+
+    Any additional ideas for mappings are welcome (since they are very easy
+    to implement :-)
+
+[+] To accomodate things like
+
+    IFS=":"
+    for ac_dir in $PATH; do
+      echo $ac_dir
+    done
+
+    bash will convert in any string assigned to IFS (and *only* to IFS)
+    all ':'s into ';'.
+
+[!] `<command> &' will work as `detach <command>' in CMD.EXE. I`ve made
+    some tricks to calculate the real PID of detach`ed session, so if you
+    see some inconsistences, please tell me. I`ve made an alias called
+    `detach' so you can use detach like in CMD.EXE. However,
+
+      detach (ls ; cat)
+
+    won`t work while
+
+      (ls ; cat) &
+
+    will. This is due to the fact how bash interprets command line, as I
+    understand.
+
+[!] test -r -w -z now works correctly (? not tested intensively).
+    test -x (test if executable) will return TRUE for any file. I`ve left
+    this unchanged since OS/2 indeed can execute any file.
+
+
+[;] Ctrl+Break does not break programs that does not have their own
+    Ctrl+Break handler (i.e. MORE.COM). I tried to make it work but did not
+    succeeded :-(
+
+[;] enable -f works, but loadable external commands cannot import entries
+    from bash, so it doesn`t work with existing loadables :-( Does executables
+    in *ix allow shared libraries to import symbols from executable??? I doubt,
+    although I`ll check it.
+
+[;] FAT is not supported and never will be. Even m$ doesn`t support FAT
+    anymore :-)

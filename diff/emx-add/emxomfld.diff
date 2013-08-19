@@ -1,0 +1,60 @@
+*** emxomfld.c	Sun Sep  8 18:47:14 1996
+--- ..\emxomfld.c	Thu Oct  9 18:28:20 1997
+***************
+*** 783,789 ****
+    if (rc == 0 && res_fname != NULL)
+      {
+        arg_init (TRUE);
+!       put_arg ("rc", TRUE);
+        put_arg (res_fname, TRUE);
+        put_arg (output_fname, TRUE);
+        arg_end ();
+--- 783,789 ----
+    if (rc == 0 && res_fname != NULL)
+      {
+        arg_init (TRUE);
+!       put_arg ("rc -n", TRUE);
+        put_arg (res_fname, TRUE);
+        put_arg (output_fname, TRUE);
+        arg_end ();
+***************
+*** 801,816 ****
+  
+    if (rc == 0 && exe_flag)
+      {
+!       int h;
+  
+!       h = open (output_fname,
+!                 O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0666);
+!       if (h < 0)
+          {
+            perror ("emxomfld");
+            exit (2);
+          }
+!       close (h);
+      }
+  
+    /* Return the return code of LINK386 (or RC). */
+--- 801,822 ----
+  
+    if (rc == 0 && exe_flag)
+      {
+!       char execname[512];
+  
+!       t = xstrdup (output_fname);
+!       _remext (t);
+! 
+!       _execname((char *)&execname, sizeof(execname));
+!       strcpy(_getname((char *)&execname), "nullstub.exe");
+!       /* Copy stub into file */
+!       DosCopy((char *)&execname, t, 4);
+!       /* Now touch it */
+!       if (utime(t, NULL))
+          {
+            perror ("emxomfld");
+            exit (2);
+          }
+!       free (t);
+      }
+  
+    /* Return the return code of LINK386 (or RC). */

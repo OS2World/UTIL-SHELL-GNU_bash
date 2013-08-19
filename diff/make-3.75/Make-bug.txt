@@ -1,0 +1,123 @@
+The original OS/2 port of GNU Make 3.75 contains a bug
+which leads to following:
+
+Suppose we have the following makefile:
+
+----------------------------------- cat here ---------------
+CC = args
+
+all: bug1 bug2
+
+bug1:
+	@echo Press a key to see 1st MAKE bug
+	$(CC) arg1\
+	arg2\
+	arg3 | cat
+
+bug2:
+	@echo Press a key to see 2nd MAKE bug
+	$(CC) arg1          \
+	arg2                \
+	arg3 | cat
+------------------------------------------------------------
+
+where args is a program which shows the argv[] vector (here is it:
+--
+#include <conio.h>
+
+main(int argc, char *argv[])
+{
+ int i;
+ for (i = 0; i < argc; i++)
+  printf("%d: [%s]\n", i, argv[i]);
+ getch();
+}
+--
+). The MAKE output looks as follows:
+
+------------------------------------------------------------
+[F:\emx\gnumake\test]make
+Press a key to see 1st MAKE bug
+args arg1\
+arg2\
+arg3 | cat
+0: [args]
+1: [arg1 arg2 arg3]
+Press a key to see 2nd MAKE bug
+args arg1          \
+arg2                \
+arg3 | cat
+0: [args]
+1: [arg1]
+2: [ arg2]
+3: [ arg3]
+------------------------------------------------------------
+
+Both these case are incorrectly handled by MAKE, and I`ve found this is
+due to the following MAKE change:
+
+- job.c ----------------------------------------------------
+	    /* Eat the backslash, the newline, and following whitespace,
+	       replacing it all with a single space (which is escaped
+	       from the shell).  */
+	    p += 2;
+
+	    /* If there are tabs after a backslash-newline,
+	       remove them from the source line which will be echoed,
+	       since they were most likely used to line
+	       up the continued line with the previous one.  */
+	    while (*p == '\t')
+	      strcpy (p, p + 1);
+
+	    p = next_token (p);
+	    --p;
+#ifdef __EMX__
+	    if (!is_cmd)
+#endif
+	    *ap++ = '\\';
+	    *ap++ = ' ';
+	    continue;
+	  }
+------------------------------------------------------------
+
+If we`ll remove the #ifdef __EMX__ section, everything is working correctly.
+Here:
+
+------------------------------------------------------------
+Press a key to see 1st MAKE bug
+args arg1\
+arg2\
+arg3 | cat
+0: [args]
+1: [arg1]
+2: [arg2]
+3: [arg3]
+Press a key to see 2nd MAKE bug
+args arg1          \
+arg2                \
+arg3 | cat
+0: [args]
+1: [arg1]
+2: [arg2]
+3: [arg3]
+------------------------------------------------------------
+
+The only thing I cannot understand is _why_ that #ifdef was there. I don`t
+know, maybe I broke something other? :-)
+
+P.S. I also added to MAKE the following .DEF file:
+--
+NAME Make WINDOWCOMPAT
+EXETYPE OS2
+DESCRIPTION "GNU Make v3.75 for OS/2"
+STACKSIZE 0x80000
+--
+and changed a bit the makefile:
+
+os2:
+	$(MAKE) -f Makefile all DEFFILE=Make.def \
+	CC="gcc -O -Zomf -Zcrtdll" O=".obj" LDFLAGS="-s -Zstack 512"
+
+[...]
+make.exe : $(objs) $(DEFFILE)
+	$(CC) $(LDFLAGS) $^ $(LOADLIBES) -o $@

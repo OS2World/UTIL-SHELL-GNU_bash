@@ -1,0 +1,27 @@
+#------------------------------------------------------------------------------#
+#                              bash/2 startup file                             #
+#                                                                              #
+# This file is ALWAYS loaded, whenever bash/2 is started in interactive,       #
+# non-interactive and /bin/sh modes. We should define here some aliases and    #
+# environment variables to rise compatibility with Unix scripts.               #
+#------------------------------------------------------------------------------#
+
+# Emulate some UNIX programs
+alias /bin/sh=sh
+alias clear='echo -e -n "\E[2J"'
+
+# Don`t quote " and \ (emx-style) in each argv[] for the following programs:
+export BASH_NOQUOTEARGS="cmd;command;comp;e;epm;find;lxlite;print;print;rexxc;view;xcopy"
+
+# Disable symlinks to disallow BASH cache current working directory
+set -P
+
+# Set HOSTFILE, if not already set
+if [ -z "$HOSTFILE" ] ; then
+	export HOSTFILE=$ETC'/hosts'
+fi
+
+# Set HOST, if not already set
+if [ -z "$HOST" ] ; then
+	export HOST=${HOSTNAME}
+fi

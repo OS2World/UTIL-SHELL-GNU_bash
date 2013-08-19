@@ -1,0 +1,58 @@
+There are two changes in OS/2 port of GNU Make 3.75 that should be made
+to ensure you will have less problems:
+
+1st change: MAKE ignores SHELL environment variable, using MAKE_SHELL,
+COMSPEC, OS2_SHELL but not SHELL. The following change fixes this:
+
+- job.c ----------------------------------------------------
+char *
+os2_shell(for_cmd)
+  int for_cmd;
+{
+  char *make_shell,*shell,*comspec,*os2_shell;
+
+  make_shell = getenv("MAKE_SHELL");
+  shell = getenv("SHELL");
+  comspec = getenv("COMSPEC");
+  os2_shell = getenv("OS2_SHELL");
+
+  if(make_shell != NULL && !for_cmd)
+    return make_shell;
+  else if(shell != NULL)
+    return shell;
+  else if(comspec != NULL)
+    return comspec;
+  else if(os2_shell != NULL)
+    return os2_shell;
+  else
+    return default_shell;
+}
+------------------------------------------------------------
+
+2nd change: This is a real bug, the details are in file make-bug.txt.
+You should remove the text between (and including) #ifdef __EMX__ and
+#endif below:
+
+- job.c ----------------------------------------------------
+	    /* Eat the backslash, the newline, and following whitespace,
+	       replacing it all with a single space (which is escaped
+	       from the shell).  */
+	    p += 2;
+
+	    /* If there are tabs after a backslash-newline,
+	       remove them from the source line which will be echoed,
+	       since they were most likely used to line
+	       up the continued line with the previous one.  */
+	    while (*p == '\t')
+	      strcpy (p, p + 1);
+
+	    p = next_token (p);
+	    --p;
+#ifdef __EMX__
+	    if (!is_cmd)
+#endif
+	    *ap++ = '\\';
+	    *ap++ = ' ';
+	    continue;
+	  }
+------------------------------------------------------------
